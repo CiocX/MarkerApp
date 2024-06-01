@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "364047496090",
+    "project_id": "markerapp-9a526",
+    "storage_bucket": "markerapp-9a526.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:364047496090:android:4ccca34ccaf8770f478023",
+        "android_client_info": {
+          "package_name": "com.marker.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZRyHKD-FEeA7PWyR9qSXDxIPv1f8ONvU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,4 @@
-package com.example.marker_app
+package com.marker.app
 
 import io.flutter.embedding.android.FlutterActivity
 
