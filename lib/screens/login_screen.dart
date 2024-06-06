@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:marker_app/utils/helpers/snackbar_helper.dart';
 import 'package:marker_app/values/app_regex.dart';
 
 import '../components/app_text_form_field.dart';
-import '../resources/resources.dart';
 import '../utils/common_widgets/gradient_background.dart';
 import '../utils/helpers/navigation_helper.dart';
 import '../values/app_constants.dart';
 import '../values/app_routes.dart';
 import '../values/app_strings.dart';
 import '../values/app_theme.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -51,6 +50,31 @@ class _LoginPageState extends State<LoginPage> {
     } else {
       fieldValidNotifier.value = false;
     }
+  }
+
+  Future<void> signIntoApp() async {
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: emailController.text,
+        password: passwordController.text
+      );
+
+    emailController.clear();
+    passwordController.clear();
+
+    NavigationHelper.pushReplacementNamed(
+    AppRoutes.mainMap,
+    );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        print('No user found for that email.');
+      } else if (e.code == 'wrong-password') {
+        print('Wrong password provided for that user.');
+      }
+    }
+
+    emailController.clear();
+    passwordController.clear();
   }
 
   @override
@@ -149,11 +173,7 @@ class _LoginPageState extends State<LoginPage> {
                                 // SnackbarHelper.showSnackBar(
                                 //   AppStrings.loggedIn,
                                 // );
-                                emailController.clear();
-                                passwordController.clear();
-                                NavigationHelper.pushReplacementNamed(
-                                  AppRoutes.mainMap,
-                                );
+                                signIntoApp();
                               }
                             : null,
                         child: const Text(AppStrings.login),

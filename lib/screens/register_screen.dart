@@ -11,6 +11,7 @@ import '../values/app_strings.dart';
 import '../values/app_theme.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -32,13 +33,38 @@ class _RegisterPageState extends State<RegisterPage> {
   final ValueNotifier<bool> fieldValidNotifier = ValueNotifier(false);
 
   FirebaseAuth auth = FirebaseAuth.instance;
+  FirebaseFirestore db = FirebaseFirestore.instance;
   late User user;
+
   Future<void> registerUserToFirebaseAndAddDataToFirestore() async {
     try {
       UserCredential userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(
               email: emailController.text, password: passwordController.text);
-      user = auth.currentUser;
+      if(auth.currentUser != null) {
+          user = auth.currentUser!;
+          print(user.uid);
+
+          db.collection("userData")
+            .doc(user.uid)
+            .set({
+                  "name": nameController.text,
+                  "email": emailController.text
+                })
+            .onError((e, _) => print("Error writing document: $e"));
+
+            nameController.clear();
+            emailController.clear();
+            passwordController.clear();
+            confirmPasswordController.clear();
+
+            NavigationHelper.pushReplacementNamed(
+              AppRoutes.login,
+            );
+      } else {
+        print("No user logged in");
+      }
+      
     } on FirebaseAuthException catch (e) {
       if (e.code == 'weak-password') {
         print('The password provided is too weak.');
