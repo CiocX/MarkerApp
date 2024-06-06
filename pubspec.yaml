@@ -17,6 +17,7 @@ dependencies:
   spider: ^4.2.2
   google_maps_flutter: ^2.6.1
   firebase_core: ^2.32.0
+  firebase_auth: ^4.20.0
 
 
 dev_dependencies:
