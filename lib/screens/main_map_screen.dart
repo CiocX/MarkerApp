@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../values/app_routes.dart';
+import '../utils/helpers/navigation_helper.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,7 +17,7 @@ class MainMapPage extends StatefulWidget {
 
 class _MainMapPageState extends State<MainMapPage> {
   late GoogleMapController mapController;
-  static final LatLng _center = const LatLng(45.521563, -122.677433);
+  static const LatLng _center = LatLng(45.7494, 21.2272);
   final Set<Marker> _markers = {};
   LatLng _currentMapPosition = _center;
   late BuildContext auxContext;
@@ -39,7 +41,7 @@ class _MainMapPageState extends State<MainMapPage> {
             Scaffold.of(auxContext).openEndDrawer();
           },
         ),
-        icon: BitmapDescriptor.defaultMarker,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
       ));
     });
   }
@@ -59,6 +61,14 @@ class _MainMapPageState extends State<MainMapPage> {
     });
   }
 
+  void signOutOfAccount () async{
+    await FirebaseAuth.instance.signOut();
+
+    NavigationHelper.pushReplacementNamed(
+    AppRoutes.login,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -74,12 +84,10 @@ class _MainMapPageState extends State<MainMapPage> {
   Widget build(BuildContext context) {
 
     getUserDetails();
-
     final Future<String> _calculation = Future<String>.delayed(
     const Duration(seconds: 2),
     () => 'Data Loaded',
-  );
-
+    );
 
     return FutureBuilder<String>(
       future: _calculation,
@@ -87,7 +95,7 @@ class _MainMapPageState extends State<MainMapPage> {
         return MaterialApp(
           home: Scaffold(
             appBar: AppBar(
-              title: Text(
+              title: const Text(
                 'Marker Mapper',
                 style: TextStyle(
                   color: Colors.white,
@@ -114,7 +122,7 @@ class _MainMapPageState extends State<MainMapPage> {
                 padding: EdgeInsets.zero,
                 children: [
                   UserAccountsDrawerHeader(
-                    currentAccountPicture: CircleAvatar(
+                    currentAccountPicture: const CircleAvatar(
                         backgroundImage:
                             AssetImage('assets/vectors/default_profile.png')),
                     accountEmail: Text(email),
@@ -122,34 +130,34 @@ class _MainMapPageState extends State<MainMapPage> {
                       name,
                       style: TextStyle(fontSize: 24.0),
                     ),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: Colors.black87,
                     ),
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.add),
-                    title: const Text(
+                  const ListTile(
+                    leading: Icon(Icons.add),
+                    title: Text(
                       'Add Marker',
                       style: TextStyle(fontSize: 24.0),
                     ),
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.filter_list),
-                    title: const Text(
+                  const ListTile(
+                    leading: Icon(Icons.filter_list),
+                    title: Text(
                       'Filter Marker',
                       style: TextStyle(fontSize: 24.0),
                     ),
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.account_box),
-                    title: const Text(
+                  const ListTile(
+                    leading: Icon(Icons.account_box),
+                    title: Text(
                       'Account Details',
                       style: TextStyle(fontSize: 24.0),
                     ),
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.info_outline),
-                    title: const Text(
+                  const ListTile(
+                    leading: Icon(Icons.info_outline),
+                    title: Text(
                       'About Us',
                       style: TextStyle(fontSize: 24.0),
                     ),
@@ -160,6 +168,7 @@ class _MainMapPageState extends State<MainMapPage> {
                       'Sign out',
                       style: TextStyle(fontSize: 24.0),
                     ),
+                    onTap: () => signOutOfAccount(),
                   ),
                 ],
               ),
@@ -168,44 +177,77 @@ class _MainMapPageState extends State<MainMapPage> {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  const UserAccountsDrawerHeader(
-                    currentAccountPicture: CircleAvatar(
-                      backgroundImage:
-                          AssetImage('assets/vectors/default_profile.png'),
-                    ),
-                    accountEmail: Text('best.post@example.com'),
-                    accountName: Text(
-                      'Best Postington',
-                      style: TextStyle(fontSize: 24.0),
-                    ),
-                    decoration: BoxDecoration(
+                  DrawerHeader(
+                    decoration: const BoxDecoration(
                       color: Colors.black87,
                     ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.house),
-                    title: const Text(
-                      'Houses',
-                      style: TextStyle(fontSize: 24.0),
+                    child: Row(
+                      children: [
+                       Image.asset('assets/vectors/default_profile.png'),
+                       const Expanded(
+                        child: Text('Marker Title',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 24.0,
+                          color: Colors.white
+                          ),
+                        ),
+                       )
+                      ],
                     ),
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.apartment),
-                    title: const Text(
-                      'Apartments',
+                  const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [DropdownMenu(
+                    enableFilter: false,
+                    enableSearch: false,
+                    leadingIcon: Icon(Icons.person),
+                    label: Text(
+                      'Author',
                       style: TextStyle(fontSize: 24.0),
                     ),
+                    dropdownMenuEntries: [DropdownMenuEntry<Text>(value: Text('Name of Author'), label: 'Name of Author2',enabled: false)],
                   ),
+                  DropdownMenu(
+                    enableFilter: false,
+                    enableSearch: false,
+                    leadingIcon: Icon(Icons.category_sharp),
+                    label: Text(
+                      'Category',
+                      style: TextStyle(fontSize: 24.0),
+                    ),
+                    dropdownMenuEntries: [DropdownMenuEntry<Text>(value: Text('Name of Author'), label: 'Name of Author2',enabled: false)],
+                  ),
+                  DropdownMenu(
+                    enableFilter: false,
+                    enableSearch: false,
+                    leadingIcon: Icon(Icons.description_rounded),
+                    label: Text(
+                      'Description',
+                      style: TextStyle(fontSize: 24.0),
+                    ),
+                    dropdownMenuEntries: [DropdownMenuEntry<Text>(value: Text('Name of Author'), label: 'Name of Author2',enabled: false)],
+                  ),
+                  DropdownMenu(
+                    enableFilter: false,
+                    enableSearch: false,
+                    leadingIcon: Icon(Icons.hourglass_full_rounded),
+                    label: Text(
+                      'Duration',
+                      style: TextStyle(fontSize: 24.0),
+                    ),
+                    dropdownMenuEntries: [DropdownMenuEntry<Text>(value: Text('Name of Author'), label: 'Name of Author2',enabled: false)],
+                  ),],))
+                  
                 ],
               ),
             ),
+            bottomSheet: BottomSheet(builder: (context) {return const Text('Hello');},onClosing: () => (),),
             body: Stack(
               children: <Widget>[
                 GoogleMap(
                     onMapCreated: _onMapCreated,
-                    initialCameraPosition: CameraPosition(
+                    initialCameraPosition: const CameraPosition(
                       target: _center,
-                      zoom: 10.0,
+                      zoom: 15.0,
                     ),
                     markers: _markers,
                     onCameraMove: _onCameraMove),
@@ -217,7 +259,7 @@ class _MainMapPageState extends State<MainMapPage> {
                       onPressed: _onAddMarkerButtonPressed,
                       materialTapTargetSize: MaterialTapTargetSize.padded,
                       backgroundColor: Colors.grey,
-                      child: const Icon(Icons.map, size: 30.0),
+                      child: const Icon(Icons.add, size: 30.0),
                     ),
                   ),
                 ),
