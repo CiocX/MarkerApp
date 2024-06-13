@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:date_field/date_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:marker_app/components/app_text_form_field.dart';
+import 'package:marker_app/resources/appMarker.dart';
 import 'package:marker_app/values/app_strings.dart';
 import '../values/app_routes.dart';
 import '../utils/helpers/navigation_helper.dart';
@@ -21,9 +24,9 @@ class MainMapPage extends StatefulWidget {
 
 class _MainMapPageState extends State<MainMapPage> {
   late GoogleMapController mapController;
-  static const LatLng _center = LatLng(45.7494, 21.2272);
+  LatLng _userLocation = const LatLng(45.7494, 21.2272);
   final Set<Marker> _markers = {};
-  LatLng _currentMapPosition = _center;
+  late LatLng _currentMapPosition = _userLocation;
   late BuildContext auxContext;
 
   FirebaseFirestore db = FirebaseFirestore.instance;
@@ -40,10 +43,26 @@ class _MainMapPageState extends State<MainMapPage> {
 
   final _formKey = GlobalKey<FormState>();
 
+  //Geolocator geolocator = Geolocator(); 
+
   late final TextEditingController titleController;
   late final TextEditingController categoryController;
   late final TextEditingController descriptionController;
   late final TextEditingController durationController;
+
+  late DateTime startDate = DateTime.now();
+  late DateTime endDate;
+
+  final endDateKey = GlobalKey<State>();
+
+  List<AppMarker> appMarkers = List.empty();
+  int currentMarker = 0;
+
+  String markerTitle = '';
+  String markerAuthor = '';
+  String markerCategory = '';
+  String markerDescription = '';
+  String markerDuration = '';
 
   void initializeControllers() {
     titleController = TextEditingController()..addListener(controllerListener);
@@ -74,21 +93,74 @@ class _MainMapPageState extends State<MainMapPage> {
         duration.isEmpty) return;
   }
 
-  void _onAddMarkerButtonPressed() {
+
+
+  Future<void> getCurrentLocation() async {
+    try {
+      //Position _currentLocation = await Geolocator.getCurrentPosition();
+      LatLng _currentLocation = LatLng(45.7494, 21.2272);
+      setState(() {
+        _userLocation = LatLng(_currentLocation.latitude, _currentLocation.longitude);
+      });
+    } catch (e) {
+      print(e);
+      rethrow;
+
+    }
+  }
+
+  double markerColorSelector (AppMarker appMarker){
+    if(DateTime.now().isAfter(appMarker.endDate)) {
+      return BitmapDescriptor.hueRed;
+    }
+
+    if(DateTime.now().isBefore(appMarker.startDate)) {
+      return BitmapDescriptor.hueYellow;
+    }
+
+    return BitmapDescriptor.hueGreen;
+  }
+
+  void updateDrawerInfo(int markerNumber) {
     setState(() {
-      _markers.add(Marker(
-        markerId: MarkerId(_currentMapPosition.toString()),
-        position: _currentMapPosition,
-        infoWindow: InfoWindow(
-          title: 'Interesting Event',
-          snippet: 'View more details here!',
-          onTap: () {
-            Scaffold.of(auxContext).openEndDrawer();
-          },
-        ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-      ));
+      markerTitle = appMarkers[markerNumber].title;
+      markerAuthor = appMarkers[markerNumber].author;
+      markerCategory = appMarkers[markerNumber].category;
+      markerDescription = appMarkers[markerNumber].description;
+      markerDuration = appMarkers[markerNumber].startDate.toString();
+      markerDuration = markerDuration + appMarkers[markerNumber].description.toString();
     });
+  }
+
+  void updateMarkers() {
+    CollectionReference reference = db.collection('markerData');
+    reference.snapshots().listen((querySnapshot) {
+            for (var change in querySnapshot.docChanges) {
+              //appMarkers.add(AppMarker(change.doc.id, change.doc.get('title'), change.doc.get('author'), change.doc.get('category'), change.doc.get('description'), (change.doc.get('startDate') as Timestamp).toDate(), (change.doc.get('endDate') as Timestamp).toDate(), change.doc.get('latitude'), change.doc.get('longitude')));
+              appMarkers = <AppMarker>[...appMarkers, AppMarker(change.doc.id, change.doc.get('title'), change.doc.get('author'), change.doc.get('category'), change.doc.get('description'), (change.doc.get('startDate') as Timestamp).toDate(), (change.doc.get('endDate') as Timestamp).toDate(), change.doc.get('latitude'), change.doc.get('longitude'))];
+
+              setState(() {
+                _markers.add(Marker(
+                  markerId: MarkerId(appMarkers[currentMarker].id),
+                  position: LatLng(appMarkers[currentMarker].latitude, appMarkers[currentMarker].longitude),
+                  infoWindow: InfoWindow(
+                    title: appMarkers[currentMarker].title,
+                    snippet: appMarkers[currentMarker].category,
+                    onTap: () {
+                      int markerNumber = currentMarker;
+                      updateDrawerInfo(markerNumber); //TODO: markerNumber is always 4, regardless of the marker pressed... Fix it
+                      Scaffold.of(auxContext).openEndDrawer();
+                    },
+                  ),
+                  icon: BitmapDescriptor.defaultMarkerWithHue(markerColorSelector(appMarkers[currentMarker])),
+                ));
+              });
+              currentMarker = currentMarker + 1;
+            }
+      }
+    );
+
+    
   }
 
   void _onCameraMove(CameraPosition position) {
@@ -131,14 +203,17 @@ class _MainMapPageState extends State<MainMapPage> {
         user = auth.currentUser!;
         var markerUid = uuid.v4();
 
+        AppMarker newMarker = AppMarker(markerUid, titleController.text, user.uid, categoryController.text, descriptionController.text, startDate, endDate, latitude, longitude);
+
         await db.collection("markerData").doc(markerUid).set({
-          "author": user.uid,
-          "title": titleController.text,
-          "category": categoryController.text,
-          "description": descriptionController.text,
-          "duration": durationController.text,
-          "latitude": latitude,
-          "longitude": longitude,
+          "author": newMarker.author,
+          "title": newMarker.title,
+          "category": newMarker.category,
+          "description": newMarker.description,
+          "startDate": newMarker.startDate,
+          "endDate": newMarker.endDate,
+          "latitude": newMarker.latitude,
+          "longitude": newMarker.longitude,
         }).onError((e, _) => print("Error writing document: $e"));
 
         titleController.clear();
@@ -219,13 +294,29 @@ class _MainMapPageState extends State<MainMapPage> {
                               _formKey.currentState?.validate(),
                           controller: descriptionController,
                         ),
-                        AppTextFormField(
-                          labelText: 'Duration',
-                          keyboardType: TextInputType.name,
-                          textInputAction: TextInputAction.next,
+                        DateTimeFormField(
+                          decoration: const InputDecoration(
+                            labelText: 'Start Date',
+                          ),
+                          firstDate: DateTime.now(),
+                          initialPickerDateTime: DateTime.now(),
                           onChanged: (value) =>
-                              _formKey.currentState?.validate(),
-                          controller: durationController,
+                            setState(() {
+                              startDate = value!;
+                              endDateKey.currentState!.build(context);
+                            }),
+                        ),
+                        DateTimeFormField(
+                          key: endDateKey,
+                          decoration: const InputDecoration(
+                            labelText: 'End Date',
+                          ),
+                          firstDate: (DateTime.now().isBefore(startDate))? startDate : DateTime.now(),
+                          initialPickerDateTime: (DateTime.now().isBefore(startDate))? startDate : DateTime.now(),
+                          onChanged: (value) =>
+                            setState(() {
+                              endDate = value!;
+                            }),
                         ),
                       ],
                     ),
@@ -240,6 +331,11 @@ class _MainMapPageState extends State<MainMapPage> {
   @override
   void initState() {
     initializeControllers();
+    getCurrentLocation();
+
+    //Timer.periodic(Duration(seconds: 3), (Timer t) => updateMarkers());
+    updateMarkers();
+
     super.initState();
   }
 
@@ -352,9 +448,9 @@ class _MainMapPageState extends State<MainMapPage> {
                       child: Row(
                         children: [
                           Image.asset('assets/vectors/default_profile.png'),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Marker Title',
+                              markerTitle,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                   fontSize: 24.0, color: Colors.white),
@@ -363,7 +459,7 @@ class _MainMapPageState extends State<MainMapPage> {
                         ],
                       ),
                     ),
-                    const Expanded(
+                    Expanded(
                         child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -378,7 +474,7 @@ class _MainMapPageState extends State<MainMapPage> {
                           dropdownMenuEntries: [
                             DropdownMenuEntry<Text>(
                                 value: Text('Name of Author'),
-                                label: 'Name of Author2',
+                                label: markerAuthor,
                                 enabled: false)
                           ],
                         ),
@@ -392,8 +488,8 @@ class _MainMapPageState extends State<MainMapPage> {
                           ),
                           dropdownMenuEntries: [
                             DropdownMenuEntry<Text>(
-                                value: Text('Name of Author'),
-                                label: 'Name of Author2',
+                                value: Text('Name of Category'),
+                                label: markerCategory,
                                 enabled: false)
                           ],
                         ),
@@ -407,8 +503,8 @@ class _MainMapPageState extends State<MainMapPage> {
                           ),
                           dropdownMenuEntries: [
                             DropdownMenuEntry<Text>(
-                                value: Text('Name of Author'),
-                                label: 'Name of Author2',
+                                value: Text('Name of Description'),
+                                label: markerDescription,
                                 enabled: false)
                           ],
                         ),
@@ -422,8 +518,8 @@ class _MainMapPageState extends State<MainMapPage> {
                           ),
                           dropdownMenuEntries: [
                             DropdownMenuEntry<Text>(
-                                value: Text('Name of Author'),
-                                label: 'Name of Author2',
+                                value: Text('Name of Duration'),
+                                label: markerDuration,
                                 enabled: false)
                           ],
                         ),
@@ -436,8 +532,8 @@ class _MainMapPageState extends State<MainMapPage> {
                 children: <Widget>[
                   GoogleMap(
                     onMapCreated: _onMapCreated,
-                    initialCameraPosition: const CameraPosition(
-                      target: _center,
+                    initialCameraPosition: CameraPosition(
+                      target: _userLocation,
                       zoom: 15.0,
                     ),
                     markers: _markers,
