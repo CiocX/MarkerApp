@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:auto_size_text/auto_size_text.dart';
 import 'package:date_field/date_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -120,7 +121,7 @@ class _MainMapPageState extends State<MainMapPage> {
     }
 
     if(DateTime.now().isBefore(appMarker.startDate)) {
-      return BitmapDescriptor.hueYellow;
+      return BitmapDescriptor.hueOrange;
     }
 
     return BitmapDescriptor.hueGreen;
@@ -249,9 +250,6 @@ class _MainMapPageState extends State<MainMapPage> {
         descriptionController.clear();
         durationController.clear();
 
-        NavigationHelper.pushReplacementNamed(
-          AppRoutes.login,
-        );
       } else {
         print("No user logged in");
       }
@@ -375,7 +373,7 @@ class _MainMapPageState extends State<MainMapPage> {
 
     setState(() {
     _markers[markerId] = marker!.copyWith(
-      iconParam: isVisible ? BitmapDescriptor.defaultMarkerWithHue(markerType == 0 ? BitmapDescriptor.hueGreen : markerType == 1 ? BitmapDescriptor.hueYellow : BitmapDescriptor.hueRed) : transparentIcon,
+      iconParam: isVisible ? BitmapDescriptor.defaultMarkerWithHue(markerType == 0 ? BitmapDescriptor.hueGreen : markerType == 1 ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueRed) : transparentIcon,
     );
   });
   }
@@ -469,11 +467,14 @@ class _MainMapPageState extends State<MainMapPage> {
                     UserAccountsDrawerHeader(
                       currentAccountPicture: const CircleAvatar(
                           backgroundImage:
-                              AssetImage('assets/vectors/default_profile.png')),
+                              AssetImage('assets/vectors/negative_profile_picture.png')),
                       accountEmail: Text(email),
-                      accountName: Text(
-                        name,
-                        style: TextStyle(fontSize: 24.0),
+                      accountName: Padding(
+                        padding: const EdgeInsets.fromLTRB(0.0, 25.0, 0.0, 0.0),
+                        child: Text(
+                          name,
+                          style: TextStyle(fontSize: 24.0, ),
+                        ),
                       ),
                       decoration: const BoxDecoration(
                         color: Colors.black87,
@@ -483,7 +484,7 @@ class _MainMapPageState extends State<MainMapPage> {
                       leading: Icon(Icons.filter_list),
                       title: Text(
                         'Filter Marker',
-                        style: TextStyle(fontSize: 24.0),
+                        style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold,),
                       ),
                       children: <Widget>[
                         ListTile(
@@ -530,18 +531,29 @@ class _MainMapPageState extends State<MainMapPage> {
                         ),
                       ],
                     ),
-                    const ListTile(
+                    const ExpansionTile(
                       leading: Icon(Icons.info_outline),
                       title: Text(
                         'About Us',
-                        style: TextStyle(fontSize: 24.0),
+                        style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold,),
                       ),
+                      children: [
+                        ListTile(
+                          title: AutoSizeText(
+                            'This application\'s purpose is to provide it\'s users with the ability to better organise as a community. The functionality it provides consists in the ability to create markers and to have them readily available to all users of the app, in order for them to know about all important upcoming, current, and past events.',
+                            minFontSize: 14,
+                            maxLines: 10,
+                            textAlign: TextAlign.justify,
+                            style:TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
                     ),
                     ListTile(
                       leading: const Icon(Icons.logout),
                       title: const Text(
                         'Sign out',
-                        style: TextStyle(fontSize: 24.0),
+                        style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold,),
                       ),
                       onTap: () => signOutOfAccount(),
                     ),

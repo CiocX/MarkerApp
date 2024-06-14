@@ -89,11 +89,15 @@ class _LoginPageState extends State<LoginPage> {
 }
 
   Future resetPassword(String email) async {
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      showSnackbar("Password reset link has been sent to your email.");
-    } catch (e) {
-      showSnackbar("An error occurred while trying to send reset link: ${e.toString()}");
+    if(!AppConstants.emailRegex.hasMatch(email)) {
+      showSnackbar("In order to send a password reset request, a valid email must be entered!");
+    } else {
+      try {
+        await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+        showSnackbar("Password reset link has been sent to your email.");
+      } catch (e) {
+        showSnackbar("An error occurred while trying to send reset link: ${e.toString()}");
+      }
     }
   }
 
@@ -115,13 +119,18 @@ class _LoginPageState extends State<LoginPage> {
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
-          const GradientBackground(
-            children: [
-              Text(
-                AppStrings.signInToYourNAccount,
-                style: AppTheme.titleLarge,
-              ),
-            ],
+          Container(
+            decoration: const BoxDecoration(
+                  color: Colors.black87,
+                ),
+            child: const Column(
+              children: [
+                SizedBox(height: 40),
+                Text('Sign in', style: AppTheme.titleLarge),
+                Text('Log in to your account', style: AppTheme.bodySmall),
+                SizedBox(height: 40),
+              ],
+            ),
           ),
           Form(
             key: _formKey,

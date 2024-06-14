@@ -133,13 +133,21 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ListView(
+        padding: EdgeInsets.zero,
         children: [
-          const GradientBackground(
-            children: [
-              Text(AppStrings.register, style: AppTheme.titleLarge),
-              SizedBox(height: 6),
-              Text(AppStrings.createYourAccount, style: AppTheme.bodySmall),
-            ],
+          Container(
+            decoration: const BoxDecoration(
+                  color: Colors.black87,
+                ),
+            child: const Column(
+              children: [
+                SizedBox(height: 40),
+                Text(AppStrings.register, style: AppTheme.titleLarge),
+                SizedBox(height: 6),
+                Text(AppStrings.createYourAccount, style: AppTheme.bodySmall),
+                SizedBox(height: 40),
+              ],
+            ),
           ),
           Padding(
             padding: const EdgeInsets.all(20),

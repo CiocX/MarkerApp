@@ -20,15 +20,15 @@ class AppStrings {
 
   static const String name = 'Name';
   static const String pleaseEnterName = 'Please, Enter Name';
-  static const String invalidName = 'Invalid Name';
+  static const String invalidName = 'Must have at least 4 characters.';
 
   static const String email = 'Email';
   static const String pleaseEnterEmailAddress = 'Please, Enter Email Address';
-  static const String invalidEmailAddress = 'Invalid Email Address';
+  static const String invalidEmailAddress = 'Must contain @email.com';
 
   static const String password = 'Password';
   static const String pleaseEnterPassword = 'Please, Enter Password';
-  static const String invalidPassword = 'Invalid Password';
+  static const String invalidPassword = '7 characters, one number, special character, lowercase and uppercase!';
 
   static const String confirmPassword = 'Confirm Password';
   static const String pleaseReEnterPassword = 'Please, Re-Enter Password';
