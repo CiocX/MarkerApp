@@ -7,7 +7,6 @@ import 'package:flutter/widgets.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:marker_app/components/app_text_form_field.dart';
 import 'package:marker_app/resources/appMarker.dart';
-import 'package:marker_app/values/app_strings.dart';
 import '../values/app_routes.dart';
 import '../utils/helpers/navigation_helper.dart';
 
@@ -22,10 +21,12 @@ class MainMapPage extends StatefulWidget {
   State<MainMapPage> createState() => _MainMapPageState();
 }
 
+final GlobalKey<_MainMapPageState> _myCustomWidgetKey = GlobalKey<_MainMapPageState>();
+
 class _MainMapPageState extends State<MainMapPage> {
   late GoogleMapController mapController;
   LatLng _userLocation = const LatLng(45.7494, 21.2272);
-  final Set<Marker> _markers = {};
+  Map<MarkerId, Marker> _markers = <MarkerId, Marker>{};
   late LatLng _currentMapPosition = _userLocation;
   late BuildContext auxContext;
 
@@ -121,40 +122,63 @@ class _MainMapPageState extends State<MainMapPage> {
     return BitmapDescriptor.hueGreen;
   }
 
+  Future setAuthorNameFromFirebase(String userID) async {
+      await db.collection('userData').doc(userID).get().then((DocumentSnapshot snapshot) {
+        markerAuthor = snapshot.get('name');
+      });
+  }
+
   void updateDrawerInfo(int markerNumber) {
     setState(() {
+      setAuthorNameFromFirebase(appMarkers[markerNumber].author);
+
       markerTitle = appMarkers[markerNumber].title;
-      markerAuthor = appMarkers[markerNumber].author;
       markerCategory = appMarkers[markerNumber].category;
       markerDescription = appMarkers[markerNumber].description;
       markerDuration = appMarkers[markerNumber].startDate.toString();
-      markerDuration = markerDuration + appMarkers[markerNumber].description.toString();
+      markerDuration = markerDuration + ' ' + appMarkers[markerNumber].endDate.toString();
     });
   }
 
   void updateMarkers() {
     CollectionReference reference = db.collection('markerData');
     reference.snapshots().listen((querySnapshot) {
-            for (var change in querySnapshot.docChanges) {
-              //appMarkers.add(AppMarker(change.doc.id, change.doc.get('title'), change.doc.get('author'), change.doc.get('category'), change.doc.get('description'), (change.doc.get('startDate') as Timestamp).toDate(), (change.doc.get('endDate') as Timestamp).toDate(), change.doc.get('latitude'), change.doc.get('longitude')));
-              appMarkers = <AppMarker>[...appMarkers, AppMarker(change.doc.id, change.doc.get('title'), change.doc.get('author'), change.doc.get('category'), change.doc.get('description'), (change.doc.get('startDate') as Timestamp).toDate(), (change.doc.get('endDate') as Timestamp).toDate(), change.doc.get('latitude'), change.doc.get('longitude'))];
 
-              setState(() {
-                _markers.add(Marker(
-                  markerId: MarkerId(appMarkers[currentMarker].id),
+            for (var change in querySnapshot.docChanges) {
+
+              var markerUid = currentMarker;
+              
+              appMarkers = <AppMarker>[...appMarkers, AppMarker(
+                change.doc.id, 
+                change.doc.get('title'), 
+                change.doc.get('author'), 
+                change.doc.get('category'), 
+                change.doc.get('description'), 
+                (change.doc.get('startDate') as Timestamp).toDate(), 
+                (change.doc.get('endDate') as Timestamp).toDate(), 
+                change.doc.get('latitude'), change.doc.get('longitude')
+                )
+              ];
+              MarkerId markerId = MarkerId(appMarkers[currentMarker].id);
+
+              final Marker marker = (Marker(
+                  markerId: markerId,
                   position: LatLng(appMarkers[currentMarker].latitude, appMarkers[currentMarker].longitude),
                   infoWindow: InfoWindow(
                     title: appMarkers[currentMarker].title,
                     snippet: appMarkers[currentMarker].category,
                     onTap: () {
-                      int markerNumber = currentMarker;
-                      updateDrawerInfo(markerNumber); //TODO: markerNumber is always 4, regardless of the marker pressed... Fix it
+                      updateDrawerInfo(markerUid);
                       Scaffold.of(auxContext).openEndDrawer();
                     },
                   ),
                   icon: BitmapDescriptor.defaultMarkerWithHue(markerColorSelector(appMarkers[currentMarker])),
                 ));
+
+              setState(() {
+                _markers[markerId] = marker;
               });
+
               currentMarker = currentMarker + 1;
             }
       }
@@ -330,10 +354,10 @@ class _MainMapPageState extends State<MainMapPage> {
 
   @override
   void initState() {
+    currentMarker = 0;
+
     initializeControllers();
     getCurrentLocation();
-
-    //Timer.periodic(Duration(seconds: 3), (Timer t) => updateMarkers());
     updateMarkers();
 
     super.initState();
@@ -365,6 +389,7 @@ class _MainMapPageState extends State<MainMapPage> {
                     color: Colors.white,
                   ),
                 ),
+                automaticallyImplyLeading: false,
                 backgroundColor: Colors.black87,
                 leading: Builder(
                   builder: (context) {
@@ -396,13 +421,6 @@ class _MainMapPageState extends State<MainMapPage> {
                       ),
                       decoration: const BoxDecoration(
                         color: Colors.black87,
-                      ),
-                    ),
-                    const ListTile(
-                      leading: Icon(Icons.add),
-                      title: Text(
-                        'Add Marker',
-                        style: TextStyle(fontSize: 24.0),
                       ),
                     ),
                     const ListTile(
@@ -439,94 +457,164 @@ class _MainMapPageState extends State<MainMapPage> {
               ),
               endDrawer: Drawer(
                 child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    DrawerHeader(
-                      decoration: const BoxDecoration(
-                        color: Colors.black87,
-                      ),
-                      child: Row(
-                        children: [
-                          Image.asset('assets/vectors/default_profile.png'),
-                          Expanded(
-                            child: Text(
-                              markerTitle,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: 24.0, color: Colors.white),
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                        child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        DropdownMenu(
-                          enableFilter: false,
-                          enableSearch: false,
-                          leadingIcon: Icon(Icons.person),
-                          label: Text(
-                            'Author',
-                            style: TextStyle(fontSize: 24.0),
-                          ),
-                          dropdownMenuEntries: [
-                            DropdownMenuEntry<Text>(
-                                value: Text('Name of Author'),
-                                label: markerAuthor,
-                                enabled: false)
-                          ],
-                        ),
-                        DropdownMenu(
-                          enableFilter: false,
-                          enableSearch: false,
-                          leadingIcon: Icon(Icons.category_sharp),
-                          label: Text(
-                            'Category',
-                            style: TextStyle(fontSize: 24.0),
-                          ),
-                          dropdownMenuEntries: [
-                            DropdownMenuEntry<Text>(
-                                value: Text('Name of Category'),
-                                label: markerCategory,
-                                enabled: false)
-                          ],
-                        ),
-                        DropdownMenu(
-                          enableFilter: false,
-                          enableSearch: false,
-                          leadingIcon: Icon(Icons.description_rounded),
-                          label: Text(
-                            'Description',
-                            style: TextStyle(fontSize: 24.0),
-                          ),
-                          dropdownMenuEntries: [
-                            DropdownMenuEntry<Text>(
-                                value: Text('Name of Description'),
-                                label: markerDescription,
-                                enabled: false)
-                          ],
-                        ),
-                        DropdownMenu(
-                          enableFilter: false,
-                          enableSearch: false,
-                          leadingIcon: Icon(Icons.hourglass_full_rounded),
-                          label: Text(
-                            'Duration',
-                            style: TextStyle(fontSize: 24.0),
-                          ),
-                          dropdownMenuEntries: [
-                            DropdownMenuEntry<Text>(
-                                value: Text('Name of Duration'),
-                                label: markerDuration,
-                                enabled: false)
-                          ],
-                        ),
-                      ],
-                    ))
-                  ],
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.black87,
                 ),
+                child: Text(
+                  markerTitle,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ExpansionTile(
+                title: Text('Author', 
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                children: <Widget>[
+                  ListTile(
+                    title: Text(markerAuthor),
+                  ),
+                ],
+              ),
+              ExpansionTile(
+                title: Text('Categories', 
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                children: <Widget>[
+                  ListTile(
+                    title: Text(markerCategory),
+                  ),
+                ],
+              ),
+              ExpansionTile(
+                title: Text('Details', 
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                children: <Widget>[
+                  ListTile(
+                    title: Text(markerDescription),
+                  ),
+                ],
+              ),
+              ExpansionTile(
+                title: Text('Duration', 
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                children: <Widget>[
+                  ListTile(
+                    title: Text(markerDuration),
+                  ),
+                ],
+              ),
+            ],
+          ),
+                // child: ListView(
+                //   padding: EdgeInsets.zero,
+                //   children: [
+                //     DrawerHeader(
+                //       decoration: const BoxDecoration(
+                //         color: Colors.black87,
+                //       ),
+                //       child: Row(
+                //         children: [
+                //           Image.asset('assets/vectors/default_profile.png'),
+                //           Expanded(
+                //             child: Text(
+                //               markerTitle,
+                //               textAlign: TextAlign.center,
+                //               style: TextStyle(
+                //                   fontSize: 24.0, color: Colors.white),
+                //             ),
+                //           )
+                //         ],
+                //       ),
+                //     ),
+                //     Expanded(
+                //         child: Column(
+                //       crossAxisAlignment: CrossAxisAlignment.stretch,
+                //       children: [
+                //         DropdownMenu(
+                //           enableFilter: false,
+                //           enableSearch: false,
+                //           leadingIcon: Icon(Icons.person),
+                //           label: Text(
+                //             'Author',
+                //             style: TextStyle(fontSize: 24.0),
+                //           ),
+                //           dropdownMenuEntries: [
+                //             DropdownMenuEntry<Text>(
+                //                 value: Text('Name of Author'),
+                //                 label: markerAuthor,
+                //                 enabled: false)
+                //           ],
+                //         ),
+                //         DropdownMenu(
+                //           enableFilter: false,
+                //           enableSearch: false,
+                //           leadingIcon: Icon(Icons.category_sharp),
+                //           label: Text(
+                //             'Category',
+                //             style: TextStyle(fontSize: 24.0),
+                //           ),
+                //           dropdownMenuEntries: [
+                //             DropdownMenuEntry<Text>(
+                //                 value: Text('Name of Category'),
+                //                 label: markerCategory,
+                //                 enabled: false)
+                //           ],
+                //         ),
+                //         DropdownMenu(
+                //           enableFilter: false,
+                //           enableSearch: false,
+                //           leadingIcon: Icon(Icons.description_rounded),
+                //           label: Text(
+                //             'Description',
+                //             style: TextStyle(fontSize: 24.0),
+                //           ),
+                //           dropdownMenuEntries: [
+                //             DropdownMenuEntry<Text>(
+                //                 value: Text('Name of Description'),
+                //                 label: markerDescription,
+                //                 enabled: false)
+                //           ],
+                //         ),
+                //         DropdownMenu(
+                //           enableFilter: false,
+                //           enableSearch: false,
+                //           leadingIcon: Icon(Icons.hourglass_full_rounded),
+                //           label: Text(
+                //             'Duration',
+                //             style: TextStyle(fontSize: 24.0),
+                //           ),
+                //           dropdownMenuEntries: [
+                //             DropdownMenuEntry<Text>(
+                //                 value: Text('Name of Duration'),
+                //                 label: markerDuration,
+                //                 enabled: false)
+                //           ],
+                //         ),
+                //       ],
+                //     ))
+                //   ],
+                // ),
               ),
               body: Stack(
                 children: <Widget>[
@@ -536,21 +624,9 @@ class _MainMapPageState extends State<MainMapPage> {
                       target: _userLocation,
                       zoom: 15.0,
                     ),
-                    markers: _markers,
+                    markers: Set<Marker>.of(_markers.values),
                     onCameraMove: _onCameraMove,
                     onTap: (position) => onMapTap(position),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(14.0),
-                    child: Align(
-                      alignment: Alignment.topRight,
-                      child: FloatingActionButton(
-                        onPressed: showMenu,
-                        materialTapTargetSize: MaterialTapTargetSize.padded,
-                        backgroundColor: Colors.grey,
-                        child: const Icon(Icons.add, size: 30.0),
-                      ),
-                    ),
                   ),
                 ],
               ),

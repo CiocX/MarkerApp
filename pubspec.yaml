@@ -21,6 +21,8 @@ dependencies:
   cloud_firestore: ^4.17.5
   uuid: ^4.4.0
   date_field: ^5.2.0
+  custom_info_window: ^1.0.1
+  clippy_flutter: ^2.0.0-nullsafety.1
 
 
 dev_dependencies:
