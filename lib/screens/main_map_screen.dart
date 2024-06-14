@@ -65,6 +65,10 @@ class _MainMapPageState extends State<MainMapPage> {
   String markerDescription = '';
   String markerDuration = '';
 
+  bool currentEventFilter = true;
+  bool upcomingEventFilter = true;
+  bool endedEventFilter = true;
+
   void initializeControllers() {
     titleController = TextEditingController()..addListener(controllerListener);
     categoryController = TextEditingController()
@@ -267,25 +271,28 @@ class _MainMapPageState extends State<MainMapPage> {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                DrawerHeader(
-                  decoration: BoxDecoration(
-                    color: Colors.black87,
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Add new marker',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 24.0, color: Colors.white),
-                      ),
-                      IconButton(
-                        onPressed: () => onAddMarkerToDatabasePress(),
-                        icon: Icon(
-                          Icons.add,
-                          color: Colors.white,
+                Container(
+                  height: 100,
+                  padding: EdgeInsets.all(8.0),
+                  color: Colors.black87,
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: Column(
+                      children: [
+                        Text(
+                          'Add new marker',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 24.0, color: Colors.white),
                         ),
-                      )
-                    ],
+                        IconButton(
+                          onPressed: () => onAddMarkerToDatabasePress(),
+                          icon: Icon(
+                            Icons.add,
+                            color: Colors.white,
+                          ),
+                        )
+                      ],
+                    ),
                   ),
                 ),
                 Container(
@@ -293,6 +300,7 @@ class _MainMapPageState extends State<MainMapPage> {
                   child: Form(
                     key: _formKey,
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         AppTextFormField(
                           labelText: 'Title',
@@ -330,6 +338,7 @@ class _MainMapPageState extends State<MainMapPage> {
                               endDateKey.currentState!.build(context);
                             }),
                         ),
+                        SizedBox(height: 20),
                         DateTimeFormField(
                           key: endDateKey,
                           decoration: const InputDecoration(
@@ -352,10 +361,53 @@ class _MainMapPageState extends State<MainMapPage> {
         });
   }
 
+  late BitmapDescriptor transparentIcon;
+
+  Future _createTransparentIcon() async {
+    transparentIcon = await BitmapDescriptor.fromAssetImage(
+      ImageConfiguration(size: Size(0.001, 0.001)),
+      'assets/vectors/invisible_marker.png'
+    );
+  }
+
+  void updateMarkerVisibility (MarkerId markerId, bool isVisible, int markerType) {
+    var marker = _markers[markerId];
+
+    setState(() {
+    _markers[markerId] = marker!.copyWith(
+      iconParam: isVisible ? BitmapDescriptor.defaultMarkerWithHue(markerType == 0 ? BitmapDescriptor.hueGreen : markerType == 1 ? BitmapDescriptor.hueYellow : BitmapDescriptor.hueRed) : transparentIcon,
+    );
+  });
+  }
+
+  void visibilityHandler(int markerType) {
+    switch (markerType){
+      case 0: //current
+        for (AppMarker appMarker in appMarkers) {
+          if(DateTime.now().isAfter(appMarker.startDate) && DateTime.now().isBefore(appMarker.endDate)){
+            updateMarkerVisibility(MarkerId(appMarker.id), currentEventFilter, 0);
+          }
+        }
+      case 1: //upcoming
+          for (AppMarker appMarker in appMarkers) {
+          if(DateTime.now().isBefore(appMarker.startDate)){
+            updateMarkerVisibility(MarkerId(appMarker.id), upcomingEventFilter, 1);
+          }
+        }
+      case 2: //ended
+        for (AppMarker appMarker in appMarkers) {
+          if(DateTime.now().isAfter(appMarker.endDate)){
+            updateMarkerVisibility(MarkerId(appMarker.id), endedEventFilter, 2);
+          }
+        }
+    }
+  }
+
   @override
   void initState() {
     currentMarker = 0;
 
+    _createTransparentIcon();
     initializeControllers();
     getCurrentLocation();
     updateMarkers();
@@ -382,7 +434,11 @@ class _MainMapPageState extends State<MainMapPage> {
         builder: (context, AsyncSnapshot<String> snapshot) {
           return MaterialApp(
             home: Scaffold(
+              drawerEdgeDragWidth: 0.0,
               appBar: AppBar(
+                actions: [
+                  IconButton(onPressed: () {}, icon: Icon(Icons.access_alarm, color: Color.fromARGB(221, 36, 36, 36), ))
+                ],
                 title: const Text(
                   'Marker Mapper',
                   style: TextStyle(
@@ -423,19 +479,56 @@ class _MainMapPageState extends State<MainMapPage> {
                         color: Colors.black87,
                       ),
                     ),
-                    const ListTile(
+                    ExpansionTile(
                       leading: Icon(Icons.filter_list),
                       title: Text(
                         'Filter Marker',
                         style: TextStyle(fontSize: 24.0),
                       ),
-                    ),
-                    const ListTile(
-                      leading: Icon(Icons.account_box),
-                      title: Text(
-                        'Account Details',
-                        style: TextStyle(fontSize: 24.0),
-                      ),
+                      children: <Widget>[
+                        ListTile(
+                          title: Text('Current'),
+                          trailing: Switch(
+                            value: currentEventFilter,
+                            onChanged: (value) {
+                              setState(() {
+                                currentEventFilter = value;
+                                visibilityHandler(0);
+                              });
+                            },
+                            activeTrackColor: const Color.fromARGB(255, 128, 128, 128),
+                            activeColor: const Color.fromARGB(255, 90, 90, 90),
+                          ),
+                        ),
+                        ListTile(
+                          title: Text('Upcoming'),
+                          trailing: Switch(
+                            value: upcomingEventFilter,
+                            onChanged: (value) {
+                              setState(() {
+                                upcomingEventFilter = value;
+                                visibilityHandler(1);
+                              });
+                            },
+                            activeTrackColor: const Color.fromARGB(255, 128, 128, 128),
+                            activeColor: const Color.fromARGB(255, 90, 90, 90),
+                          ),
+                        ),
+                        ListTile(
+                          title: Text('Ended'),
+                          trailing: Switch(
+                            value: endedEventFilter,
+                            onChanged: (value) {
+                              setState(() {
+                                endedEventFilter = value;
+                                visibilityHandler(2);
+                              });
+                            },
+                            activeTrackColor: const Color.fromARGB(255, 128, 128, 128),
+                            activeColor: const Color.fromARGB(255, 90, 90, 90),
+                          ),
+                        ),
+                      ],
                     ),
                     const ListTile(
                       leading: Icon(Icons.info_outline),
@@ -479,6 +572,7 @@ class _MainMapPageState extends State<MainMapPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                leading: Icon(Icons.person),
                 children: <Widget>[
                   ListTile(
                     title: Text(markerAuthor),
@@ -492,6 +586,7 @@ class _MainMapPageState extends State<MainMapPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                leading: Icon(Icons.category_sharp),
                 children: <Widget>[
                   ListTile(
                     title: Text(markerCategory),
@@ -505,6 +600,7 @@ class _MainMapPageState extends State<MainMapPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                leading: Icon(Icons.description_rounded),
                 children: <Widget>[
                   ListTile(
                     title: Text(markerDescription),
@@ -518,6 +614,7 @@ class _MainMapPageState extends State<MainMapPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                leading: Icon(Icons.hourglass_full_rounded),
                 children: <Widget>[
                   ListTile(
                     title: Text(markerDuration),
@@ -526,95 +623,6 @@ class _MainMapPageState extends State<MainMapPage> {
               ),
             ],
           ),
-                // child: ListView(
-                //   padding: EdgeInsets.zero,
-                //   children: [
-                //     DrawerHeader(
-                //       decoration: const BoxDecoration(
-                //         color: Colors.black87,
-                //       ),
-                //       child: Row(
-                //         children: [
-                //           Image.asset('assets/vectors/default_profile.png'),
-                //           Expanded(
-                //             child: Text(
-                //               markerTitle,
-                //               textAlign: TextAlign.center,
-                //               style: TextStyle(
-                //                   fontSize: 24.0, color: Colors.white),
-                //             ),
-                //           )
-                //         ],
-                //       ),
-                //     ),
-                //     Expanded(
-                //         child: Column(
-                //       crossAxisAlignment: CrossAxisAlignment.stretch,
-                //       children: [
-                //         DropdownMenu(
-                //           enableFilter: false,
-                //           enableSearch: false,
-                //           leadingIcon: Icon(Icons.person),
-                //           label: Text(
-                //             'Author',
-                //             style: TextStyle(fontSize: 24.0),
-                //           ),
-                //           dropdownMenuEntries: [
-                //             DropdownMenuEntry<Text>(
-                //                 value: Text('Name of Author'),
-                //                 label: markerAuthor,
-                //                 enabled: false)
-                //           ],
-                //         ),
-                //         DropdownMenu(
-                //           enableFilter: false,
-                //           enableSearch: false,
-                //           leadingIcon: Icon(Icons.category_sharp),
-                //           label: Text(
-                //             'Category',
-                //             style: TextStyle(fontSize: 24.0),
-                //           ),
-                //           dropdownMenuEntries: [
-                //             DropdownMenuEntry<Text>(
-                //                 value: Text('Name of Category'),
-                //                 label: markerCategory,
-                //                 enabled: false)
-                //           ],
-                //         ),
-                //         DropdownMenu(
-                //           enableFilter: false,
-                //           enableSearch: false,
-                //           leadingIcon: Icon(Icons.description_rounded),
-                //           label: Text(
-                //             'Description',
-                //             style: TextStyle(fontSize: 24.0),
-                //           ),
-                //           dropdownMenuEntries: [
-                //             DropdownMenuEntry<Text>(
-                //                 value: Text('Name of Description'),
-                //                 label: markerDescription,
-                //                 enabled: false)
-                //           ],
-                //         ),
-                //         DropdownMenu(
-                //           enableFilter: false,
-                //           enableSearch: false,
-                //           leadingIcon: Icon(Icons.hourglass_full_rounded),
-                //           label: Text(
-                //             'Duration',
-                //             style: TextStyle(fontSize: 24.0),
-                //           ),
-                //           dropdownMenuEntries: [
-                //             DropdownMenuEntry<Text>(
-                //                 value: Text('Name of Duration'),
-                //                 label: markerDuration,
-                //                 enabled: false)
-                //           ],
-                //         ),
-                //       ],
-                //     ))
-                //   ],
-                // ),
               ),
               body: Stack(
                 children: <Widget>[

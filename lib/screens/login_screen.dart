@@ -27,6 +27,8 @@ class _LoginPageState extends State<LoginPage> {
   late final TextEditingController emailController;
   late final TextEditingController passwordController;
 
+  String _message = '';
+
   void initializeControllers() {
     emailController = TextEditingController()..addListener(controllerListener);
     passwordController = TextEditingController()
@@ -75,6 +77,24 @@ class _LoginPageState extends State<LoginPage> {
 
     emailController.clear();
     passwordController.clear();
+  }
+
+  void showSnackbar(String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      duration: Duration(seconds: 3),
+    ),
+  );
+}
+
+  Future resetPassword(String email) async {
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      showSnackbar("Password reset link has been sent to your email.");
+    } catch (e) {
+      showSnackbar("An error occurred while trying to send reset link: ${e.toString()}");
+    }
   }
 
   @override
@@ -160,7 +180,7 @@ class _LoginPageState extends State<LoginPage> {
                     },
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {resetPassword(emailController.text);},
                     child: const Text(AppStrings.forgotPassword),
                   ),
                   const SizedBox(height: 20),
@@ -170,9 +190,6 @@ class _LoginPageState extends State<LoginPage> {
                       return FilledButton(
                         onPressed: isValid
                             ? () {
-                                // SnackbarHelper.showSnackBar(
-                                //   AppStrings.loggedIn,
-                                // );
                                 signIntoApp();
                               }
                             : null,
