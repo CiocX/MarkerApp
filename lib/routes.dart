@@ -31,8 +31,6 @@ class Routes {
       case AppRoutes.mainMap:
         return getRoute(widget: const MainMapPage());
 
-      /// An invalid route. User shouldn't see this,
-      /// it's for debugging purpose only.
       default:
         return getRoute(widget: const InvalidRoute());
     }
